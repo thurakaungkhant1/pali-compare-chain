@@ -7,8 +7,6 @@ import {
   RotateCcw,
   Sparkles,
   CheckCircle2,
-  Plus,
-  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -47,23 +45,6 @@ const Index = () => {
       { content: "", fileName: "" },
     ]);
     setActiveComparison([0, 1]);
-  };
-
-  const handleAddSlot = () => {
-    setVersions((prev) => [...prev, { content: "", fileName: "" }]);
-  };
-
-  const handleRemoveSlot = (index: number) => {
-    if (versions.length <= 2) return;
-    setVersions((prev) => prev.filter((_, i) => i !== index));
-    // Adjust active comparison if needed
-    setActiveComparison((prev) => {
-      let [left, right] = prev;
-      if (left >= index) left = Math.max(0, left - 1);
-      if (right >= index) right = Math.max(0, right - 1);
-      if (left === right) right = left === 0 ? 1 : 0;
-      return [left, Math.min(right, versions.length - 2)];
-    });
   };
 
   const filesLoaded = versions.filter((v) => v.content).length;
@@ -132,34 +113,23 @@ const Index = () => {
                   ဖိုင်များတင်ရန်
                 </h2>
                 <span className="text-xs px-2.5 py-1 rounded-full bg-secondary text-muted-foreground font-medium">
-                  {filesLoaded}/{versions.length} ဖိုင်
+                  {filesLoaded}/4 ဖိုင်
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                {hasComparableFiles && (
-                  <div className="flex items-center gap-2 text-sm text-primary font-medium animate-scale-in mr-2">
-                    <CheckCircle2 className="w-4 h-4" />
-                    နှိုင်းယှဉ်ရန် အဆင်သင့်
-                  </div>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddSlot}
-                  className="gap-1.5 rounded-xl"
-                >
-                  <Plus className="w-4 h-4" />
-                  စာစစ်ထပ်ထည့်
-                </Button>
-              </div>
+              {hasComparableFiles && (
+                <div className="flex items-center gap-2 text-sm text-primary font-medium animate-scale-in">
+                  <CheckCircle2 className="w-4 h-4" />
+                  နှိုင်းယှဉ်ရန် အဆင်သင့်
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {versions.map((version, index) => (
                 <div
                   key={index}
-                  className="relative animate-fade-in-up"
-                  style={{ animationDelay: `${Math.min(index, 4) * 0.1}s` }}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   <FileUploader
                     label={`စာစစ် ${index + 1}`}
@@ -167,14 +137,6 @@ const Index = () => {
                     onFileLoad={handleFileLoad}
                     fileName={version.fileName}
                   />
-                  {versions.length > 2 && (
-                    <button
-                      onClick={() => handleRemoveSlot(index)}
-                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:scale-110 transition-transform shadow-md"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  )}
                 </div>
               ))}
             </div>
