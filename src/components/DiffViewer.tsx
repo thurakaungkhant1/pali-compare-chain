@@ -1,4 +1,4 @@
-import { diffWords } from "diff";
+import { diffLines } from "diff";
 import { useMemo, useRef, useState } from "react";
 import { Plus, Minus, Download, Loader2, Columns, AlignJustify } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,12 @@ interface DiffViewerProps {
 
 type ViewMode = "side-by-side" | "inline";
 
+interface DiffLine {
+  lineNumber: number;
+  content: string;
+  type: "unchanged" | "added" | "removed";
+}
+
 export const DiffViewer = ({
   leftContent,
   rightContent,
@@ -26,18 +32,68 @@ export const DiffViewer = ({
   const [viewMode, setViewMode] = useState<ViewMode>("inline");
 
   const diffResult = useMemo(() => {
-    return diffWords(leftContent, rightContent);
+    return diffLines(leftContent, rightContent);
   }, [leftContent, rightContent]);
+
+  // Process diff into lines with line numbers
+  const { leftLines, rightLines, inlineLines } = useMemo(() => {
+    const left: DiffLine[] = [];
+    const right: DiffLine[] = [];
+    const inline: DiffLine[] = [];
+    let leftLineNum = 1;
+    let rightLineNum = 1;
+    let inlineLineNum = 1;
+
+    diffResult.forEach((part) => {
+      const lines = part.value.split("\n").filter((_, i, arr) => i < arr.length - 1 || part.value[part.value.length - 1] !== "\n" ? true : i < arr.length - 1);
+      
+      if (part.value.endsWith("\n")) {
+        const lastIndex = part.value.lastIndexOf("\n");
+        const beforeLast = part.value.substring(0, lastIndex);
+        const splitLines = beforeLast.split("\n");
+        splitLines.forEach((line) => {
+          if (part.removed) {
+            left.push({ lineNumber: leftLineNum++, content: line, type: "removed" });
+            inline.push({ lineNumber: inlineLineNum++, content: line, type: "removed" });
+          } else if (part.added) {
+            right.push({ lineNumber: rightLineNum++, content: line, type: "added" });
+            inline.push({ lineNumber: inlineLineNum++, content: line, type: "added" });
+          } else {
+            left.push({ lineNumber: leftLineNum++, content: line, type: "unchanged" });
+            right.push({ lineNumber: rightLineNum++, content: line, type: "unchanged" });
+            inline.push({ lineNumber: inlineLineNum++, content: line, type: "unchanged" });
+          }
+        });
+      } else if (part.value) {
+        const splitLines = part.value.split("\n");
+        splitLines.forEach((line, i) => {
+          if (part.removed) {
+            left.push({ lineNumber: leftLineNum++, content: line, type: "removed" });
+            inline.push({ lineNumber: inlineLineNum++, content: line, type: "removed" });
+          } else if (part.added) {
+            right.push({ lineNumber: rightLineNum++, content: line, type: "added" });
+            inline.push({ lineNumber: inlineLineNum++, content: line, type: "added" });
+          } else {
+            left.push({ lineNumber: leftLineNum++, content: line, type: "unchanged" });
+            right.push({ lineNumber: rightLineNum++, content: line, type: "unchanged" });
+            inline.push({ lineNumber: inlineLineNum++, content: line, type: "unchanged" });
+          }
+        });
+      }
+    });
+
+    return { leftLines: left, rightLines: right, inlineLines: inline };
+  }, [diffResult]);
 
   const stats = useMemo(() => {
     let added = 0;
     let removed = 0;
-    diffResult.forEach((part) => {
-      if (part.added) added += part.value.length;
-      if (part.removed) removed += part.value.length;
+    inlineLines.forEach((line) => {
+      if (line.type === "added") added++;
+      if (line.type === "removed") removed++;
     });
     return { added, removed };
-  }, [diffResult]);
+  }, [inlineLines]);
 
   const handleExportPDF = async () => {
     if (!contentRef.current) return;
@@ -153,30 +209,32 @@ export const DiffViewer = ({
                 {rightLabel}
               </span>
             </div>
-            <div className="p-5 overflow-auto flex-1 text-foreground leading-[1.8] whitespace-pre-wrap">
-              {diffResult.map((part, index) => {
-                if (part.removed) {
-                  return (
-                    <span
-                      key={index}
-                      className="bg-diff-removed-bg text-diff-removed-text px-1 py-0.5 rounded-md mx-0.5 line-through decoration-diff-removed-text/50"
-                    >
-                      {part.value}
-                    </span>
-                  );
-                }
-                if (part.added) {
-                  return (
-                    <span
-                      key={index}
-                      className="bg-diff-added-bg text-diff-added-text px-1 py-0.5 rounded-md mx-0.5 font-medium"
-                    >
-                      {part.value}
-                    </span>
-                  );
-                }
-                return <span key={index}>{part.value}</span>;
-              })}
+            <div className="overflow-auto flex-1">
+              {inlineLines.map((line, index) => (
+                <div
+                  key={index}
+                  className={cn(
+                    "flex border-b border-border/30 hover:bg-muted/30 transition-colors",
+                    line.type === "removed" && "bg-diff-removed-bg/50",
+                    line.type === "added" && "bg-diff-added-bg/50"
+                  )}
+                >
+                  <span className="w-14 flex-shrink-0 px-3 py-1 text-right text-xs font-mono text-muted-foreground bg-muted/30 border-r border-border/50 select-none">
+                    {line.lineNumber}
+                  </span>
+                  <span
+                    className={cn(
+                      "flex-1 px-4 py-1 font-mono text-sm whitespace-pre-wrap",
+                      line.type === "removed" && "text-diff-removed-text line-through decoration-diff-removed-text/50",
+                      line.type === "added" && "text-diff-added-text font-medium"
+                    )}
+                  >
+                    {line.type === "removed" && <Minus className="inline w-3 h-3 mr-2 opacity-70" />}
+                    {line.type === "added" && <Plus className="inline w-3 h-3 mr-2 opacity-70" />}
+                    {line.content || " "}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         ) : (
@@ -188,21 +246,28 @@ export const DiffViewer = ({
                 <div className="w-2 h-2 rounded-full bg-diff-removed-bg border border-diff-removed-text/30" />
                 <span className="truncate">{leftLabel}</span>
               </div>
-              <div className="p-5 overflow-auto flex-1 text-foreground leading-[1.8] whitespace-pre-wrap">
-                {diffResult.map((part, index) => {
-                  if (part.added) return null;
-                  if (part.removed) {
-                    return (
-                      <span
-                        key={index}
-                        className="bg-diff-removed-bg text-diff-removed-text px-1 py-0.5 rounded-md mx-0.5 line-through decoration-diff-removed-text/50"
-                      >
-                        {part.value}
-                      </span>
-                    );
-                  }
-                  return <span key={index}>{part.value}</span>;
-                })}
+              <div className="overflow-auto flex-1">
+                {leftLines.map((line, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      "flex border-b border-border/30 hover:bg-muted/30 transition-colors",
+                      line.type === "removed" && "bg-diff-removed-bg/50"
+                    )}
+                  >
+                    <span className="w-12 flex-shrink-0 px-2 py-1 text-right text-xs font-mono text-muted-foreground bg-muted/30 border-r border-border/50 select-none">
+                      {line.lineNumber}
+                    </span>
+                    <span
+                      className={cn(
+                        "flex-1 px-3 py-1 font-mono text-sm whitespace-pre-wrap",
+                        line.type === "removed" && "text-diff-removed-text line-through decoration-diff-removed-text/50"
+                      )}
+                    >
+                      {line.content || " "}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -212,21 +277,28 @@ export const DiffViewer = ({
                 <div className="w-2 h-2 rounded-full bg-diff-added-bg border border-diff-added-text/30" />
                 <span className="truncate">{rightLabel}</span>
               </div>
-              <div className="p-5 overflow-auto flex-1 text-foreground leading-[1.8] whitespace-pre-wrap">
-                {diffResult.map((part, index) => {
-                  if (part.removed) return null;
-                  if (part.added) {
-                    return (
-                      <span
-                        key={index}
-                        className="bg-diff-added-bg text-diff-added-text px-1 py-0.5 rounded-md mx-0.5 font-medium"
-                      >
-                        {part.value}
-                      </span>
-                    );
-                  }
-                  return <span key={index}>{part.value}</span>;
-                })}
+              <div className="overflow-auto flex-1">
+                {rightLines.map((line, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      "flex border-b border-border/30 hover:bg-muted/30 transition-colors",
+                      line.type === "added" && "bg-diff-added-bg/50"
+                    )}
+                  >
+                    <span className="w-12 flex-shrink-0 px-2 py-1 text-right text-xs font-mono text-muted-foreground bg-muted/30 border-r border-border/50 select-none">
+                      {line.lineNumber}
+                    </span>
+                    <span
+                      className={cn(
+                        "flex-1 px-3 py-1 font-mono text-sm whitespace-pre-wrap",
+                        line.type === "added" && "text-diff-added-text font-medium"
+                      )}
+                    >
+                      {line.content || " "}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </>
