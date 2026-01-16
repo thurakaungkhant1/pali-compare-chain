@@ -1,11 +1,12 @@
 import { useCallback, useState } from "react";
-import { Upload, Check, FileText } from "lucide-react";
+import { Upload, Check, FileText, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FileUploaderProps {
   label: string;
   index: number;
   onFileLoad: (content: string, index: number, fileName: string) => void;
+  onClear?: (index: number) => void;
   fileName?: string;
 }
 
@@ -13,9 +14,19 @@ export const FileUploader = ({
   label,
   index,
   onFileLoad,
+  onClear,
   fileName,
 }: FileUploaderProps) => {
   const [isDragging, setIsDragging] = useState(false);
+
+  const handleClear = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClear?.(index);
+    },
+    [index, onClear]
+  );
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,11 +142,18 @@ export const FileUploader = ({
 
       {/* File name or hint */}
       {hasFile ? (
-        <div className="relative flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full">
+        <div className="relative flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full group/file">
           <FileText className="w-3.5 h-3.5 text-primary" />
-          <span className="text-sm font-medium text-primary truncate max-w-[140px]">
+          <span className="text-sm font-medium text-primary truncate max-w-[120px]">
             {fileName}
           </span>
+          <button
+            onClick={handleClear}
+            className="w-5 h-5 rounded-full bg-destructive/20 hover:bg-destructive/40 flex items-center justify-center transition-colors"
+            title="ဖိုင်ဖယ်ရန်"
+          >
+            <X className="w-3 h-3 text-destructive" />
+          </button>
         </div>
       ) : (
         <span className="relative text-sm text-muted-foreground group-hover:text-foreground transition-colors">
