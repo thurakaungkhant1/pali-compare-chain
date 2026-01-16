@@ -2,8 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* 
+  Design System for Text Compare App
+  All colors MUST be HSL format.
 */
 
 @layer base {
