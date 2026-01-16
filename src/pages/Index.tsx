@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { FileUploader } from "@/components/FileUploader";
 import { DiffViewer } from "@/components/DiffViewer";
 import { VersionTabs } from "@/components/VersionTabs";
-import { FileText, ArrowRight, RotateCcw } from "lucide-react";
+import { FileText, RotateCcw, Sparkles, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface FileVersion {
@@ -42,9 +42,8 @@ const Index = () => {
     setActiveComparison([0, 1]);
   };
 
-  const hasAnyFiles = versions.some((v) => v.content);
-  const hasComparableFiles =
-    versions.filter((v) => v.content).length >= 2;
+  const filesLoaded = versions.filter((v) => v.content).length;
+  const hasComparableFiles = filesLoaded >= 2;
 
   const getValidComparison = (): [number, number] => {
     if (
@@ -64,29 +63,30 @@ const Index = () => {
   const validComparison = getValidComparison();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="border-b border-border bg-card">
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-card/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <FileText className="w-5 h-5 text-primary-foreground" />
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl gradient-warm flex items-center justify-center shadow-glow animate-float">
+              <FileText className="w-6 h-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">
-                စာစစ်ဆေးချက် နှိုင်းယှဉ်စနစ်
+              <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+                စာစစ်နှိုင်းယှဉ်စနစ်
+                <Sparkles className="w-4 h-4 text-primary" />
               </h1>
               <p className="text-sm text-muted-foreground">
                 ပါဠိ-မြန်မာ စာဖိုင်များ နှိုင်းယှဉ်ခြင်း
               </p>
             </div>
           </div>
-          {hasAnyFiles && (
+          {filesLoaded > 0 && (
             <Button
               variant="outline"
               size="sm"
               onClick={handleReset}
-              className="gap-2"
+              className="gap-2 rounded-xl hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
               အသစ်စတင်
@@ -96,53 +96,77 @@ const Index = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 py-6 flex flex-col gap-6">
+      <main className="flex-1 container mx-auto px-4 py-8 flex flex-col gap-8">
         {/* Upload Section */}
-        <section className="bg-card rounded-2xl border border-border p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-lg font-semibold text-foreground">
-              ဖိုင်များတင်ရန်
-            </span>
-            <span className="text-sm text-muted-foreground">
-              (အနည်းဆုံး ၂ ဖိုင်လိုအပ်သည်)
-            </span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[0, 1, 2, 3].map((index) => (
-              <FileUploader
-                key={index}
-                label={`စာစစ် ${index + 1}`}
-                index={index}
-                onFileLoad={handleFileLoad}
-                fileName={versions[index].fileName}
-              />
-            ))}
-          </div>
+        <section className="animate-fade-in-up">
+          <div className="bg-card rounded-3xl border border-border p-6 shadow-soft-lg">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-bold text-foreground">
+                  ဖိုင်များတင်ရန်
+                </h2>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-secondary text-muted-foreground font-medium">
+                  {filesLoaded}/4 ဖိုင်
+                </span>
+              </div>
+              {hasComparableFiles && (
+                <div className="flex items-center gap-2 text-sm text-primary font-medium animate-scale-in">
+                  <CheckCircle2 className="w-4 h-4" />
+                  နှိုင်းယှဉ်ရန် အဆင်သင့်
+                </div>
+              )}
+            </div>
 
-          {/* Flow Indicator */}
-          {hasAnyFiles && (
-            <div className="flex items-center justify-center gap-2 mt-6 text-muted-foreground">
-              {versions.map((v, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      v.content
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {i + 1}
-                  </div>
-                  {i < 3 && <ArrowRight className="w-4 h-4" />}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[0, 1, 2, 3].map((index) => (
+                <div
+                  key={index}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <FileUploader
+                    label={`စာစစ် ${index + 1}`}
+                    index={index}
+                    onFileLoad={handleFileLoad}
+                    fileName={versions[index].fileName}
+                  />
                 </div>
               ))}
             </div>
-          )}
+
+            {/* Flow Indicator */}
+            {filesLoaded > 0 && (
+              <div className="flex items-center justify-center gap-1 mt-8 animate-fade-in">
+                {versions.map((v, i) => (
+                  <div key={i} className="flex items-center gap-1">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold transition-all duration-500 ${
+                        v.content
+                          ? "gradient-warm text-primary-foreground shadow-glow scale-110"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {i + 1}
+                    </div>
+                    {i < 3 && (
+                      <ArrowRight
+                        className={`w-5 h-5 mx-1 transition-colors duration-300 ${
+                          v.content && versions[i + 1]?.content
+                            ? "text-primary"
+                            : "text-muted-foreground/30"
+                        }`}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Comparison Section */}
         {hasComparableFiles && (
-          <section className="flex-1 flex flex-col gap-4">
+          <section className="flex-1 flex flex-col gap-4 animate-fade-in-up">
             <VersionTabs
               versions={versions}
               activeComparison={validComparison}
@@ -161,27 +185,39 @@ const Index = () => {
 
         {/* Empty State */}
         {!hasComparableFiles && (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-muted-foreground max-w-md">
-              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                <FileText className="w-10 h-10" />
+          <div className="flex-1 flex items-center justify-center py-12 animate-fade-in">
+            <div className="text-center max-w-md">
+              <div className="relative inline-flex">
+                <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-6 animate-pulse-soft">
+                  <FileText className="w-10 h-10 text-primary" />
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-xl gradient-warm flex items-center justify-center shadow-glow animate-float">
+                  <Sparkles className="w-4 h-4 text-primary-foreground" />
+                </div>
               </div>
-              <h3 className="text-lg font-medium text-foreground mb-2">
-                ဖိုင်များတင်ပါ
+              <h3 className="text-xl font-bold text-foreground mb-3">
+                ဖိုင်များကို ဆွဲတင်ပါ
               </h3>
-              <p>
-                စာစစ်ထားသော .txt ဖိုင်များကို အပေါ်ရှိ ခလုတ်များတွင်
-                တင်ပြီးနောက် ပြောင်းလဲမှုများကို ကြည့်ရှုနိုင်ပါသည်။
+              <p className="text-muted-foreground leading-relaxed">
+                စာစစ်ထားသော .txt ဖိုင်များကို အထက်ပါ ခလုတ်များတွင် တင်ပြီး
+                ပြောင်းလဲမှုများကို နှိုင်းယှဉ်ကြည့်ရှုနိုင်ပါသည်။
               </p>
+              <div className="flex items-center justify-center gap-2 mt-6 text-sm text-muted-foreground">
+                <span className="px-3 py-1 rounded-full bg-secondary">
+                  အနည်းဆုံး ၂ ဖိုင်လိုအပ်ပါသည်
+                </span>
+              </div>
             </div>
           </div>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border py-4">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          ပါဠိ-မြန်မာ စာဖိုင် နှိုင်းယှဉ်ခြင်းစနစ်
+      <footer className="border-t border-border/50 py-6 bg-card/50 backdrop-blur-sm">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            ပါဠိ-မြန်မာ စာဖိုင် နှိုင်းယှဉ်ခြင်းစနစ် • စာစစ်များအတွက်
+          </p>
         </div>
       </footer>
     </div>

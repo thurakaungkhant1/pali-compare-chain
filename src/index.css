@@ -8,43 +8,48 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 30 20% 98%;
-    --foreground: 20 15% 15%;
+    --background: 40 30% 97%;
+    --foreground: 30 20% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 20 15% 15%;
+    --card-foreground: 30 20% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 20 15% 15%;
+    --popover-foreground: 30 20% 12%;
 
-    --primary: 25 80% 45%;
+    --primary: 24 95% 53%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 30 15% 92%;
-    --secondary-foreground: 20 15% 20%;
+    --secondary: 35 25% 93%;
+    --secondary-foreground: 30 20% 20%;
 
-    --muted: 30 10% 94%;
-    --muted-foreground: 20 10% 45%;
+    --muted: 35 20% 94%;
+    --muted-foreground: 30 15% 50%;
 
-    --accent: 25 60% 50%;
+    --accent: 32 90% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 15% 88%;
-    --input: 30 15% 88%;
-    --ring: 25 80% 45%;
+    --border: 35 20% 88%;
+    --input: 35 20% 88%;
+    --ring: 24 95% 53%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
     /* Diff colors */
-    --diff-added-bg: 142 76% 94%;
-    --diff-added-text: 142 70% 25%;
-    --diff-removed-bg: 0 84% 95%;
-    --diff-removed-text: 0 72% 35%;
-    --diff-changed-bg: 45 93% 94%;
+    --diff-added-bg: 145 60% 92%;
+    --diff-added-text: 145 70% 28%;
+    --diff-removed-bg: 0 70% 94%;
+    --diff-removed-text: 0 65% 40%;
+    --diff-changed-bg: 45 90% 92%;
     --diff-changed-text: 45 80% 30%;
+
+    /* Gradients */
+    --gradient-warm: linear-gradient(135deg, hsl(24 95% 53%) 0%, hsl(35 95% 60%) 100%);
+    --gradient-soft: linear-gradient(180deg, hsl(40 30% 97%) 0%, hsl(35 25% 93%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(35 20% 98%) 100%);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -57,41 +62,46 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 20 15% 10%;
-    --foreground: 30 20% 95%;
+    --background: 25 20% 8%;
+    --foreground: 35 25% 95%;
 
-    --card: 20 15% 13%;
-    --card-foreground: 30 20% 95%;
+    --card: 25 18% 12%;
+    --card-foreground: 35 25% 95%;
 
-    --popover: 20 15% 13%;
-    --popover-foreground: 30 20% 95%;
+    --popover: 25 18% 12%;
+    --popover-foreground: 35 25% 95%;
 
-    --primary: 25 80% 55%;
-    --primary-foreground: 20 15% 10%;
+    --primary: 24 90% 58%;
+    --primary-foreground: 25 20% 8%;
 
-    --secondary: 20 15% 18%;
-    --secondary-foreground: 30 20% 90%;
+    --secondary: 25 15% 18%;
+    --secondary-foreground: 35 25% 90%;
 
-    --muted: 20 15% 18%;
-    --muted-foreground: 30 10% 60%;
+    --muted: 25 15% 18%;
+    --muted-foreground: 35 15% 60%;
 
-    --accent: 25 70% 55%;
-    --accent-foreground: 20 15% 10%;
+    --accent: 32 85% 55%;
+    --accent-foreground: 25 20% 8%;
 
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 20 15% 20%;
-    --input: 20 15% 20%;
-    --ring: 25 80% 55%;
+    --border: 25 15% 22%;
+    --input: 25 15% 22%;
+    --ring: 24 90% 58%;
 
     /* Diff colors dark mode */
-    --diff-added-bg: 142 50% 15%;
-    --diff-added-text: 142 60% 70%;
-    --diff-removed-bg: 0 50% 18%;
-    --diff-removed-text: 0 60% 70%;
-    --diff-changed-bg: 45 50% 18%;
-    --diff-changed-text: 45 60% 70%;
+    --diff-added-bg: 145 40% 15%;
+    --diff-added-text: 145 55% 65%;
+    --diff-removed-bg: 0 40% 18%;
+    --diff-removed-text: 0 55% 68%;
+    --diff-changed-bg: 45 40% 18%;
+    --diff-changed-text: 45 55% 65%;
+
+    /* Gradients dark */
+    --gradient-warm: linear-gradient(135deg, hsl(24 90% 58%) 0%, hsl(35 90% 55%) 100%);
+    --gradient-soft: linear-gradient(180deg, hsl(25 20% 8%) 0%, hsl(25 18% 12%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(25 18% 14%) 0%, hsl(25 18% 10%) 100%);
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -110,6 +120,24 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    background: var(--gradient-soft);
+  }
+}
+
+@layer utilities {
+  .gradient-warm {
+    background: var(--gradient-warm);
+  }
+  
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .text-gradient {
+    background: var(--gradient-warm);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }
