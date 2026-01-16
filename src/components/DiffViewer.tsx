@@ -1,6 +1,6 @@
 import { diffLines } from "diff";
-import { useMemo, useRef, useState } from "react";
-import { Plus, Minus, Download, Loader2, Columns, AlignJustify } from "lucide-react";
+import { useMemo, useRef, useState, useCallback, useEffect } from "react";
+import { Plus, Minus, Download, Loader2, Columns, AlignJustify, ChevronUp, ChevronDown, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import jsPDF from "jspdf";
@@ -19,6 +19,7 @@ interface DiffLine {
   lineNumber: number;
   content: string;
   type: "unchanged" | "added" | "removed";
+  changeIndex?: number;
 }
 
 export const DiffViewer = ({
@@ -28,36 +29,49 @@ export const DiffViewer = ({
   rightLabel,
 }: DiffViewerProps) => {
   const contentRef = useRef<HTMLDivElement>(null);
+  const lineRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const [isExporting, setIsExporting] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("inline");
+  const [currentChangeIndex, setCurrentChangeIndex] = useState(0);
 
   const diffResult = useMemo(() => {
     return diffLines(leftContent, rightContent);
   }, [leftContent, rightContent]);
 
-  // Process diff into lines with line numbers
-  const { leftLines, rightLines, inlineLines } = useMemo(() => {
+  // Process diff into lines with line numbers and change indices
+  const { leftLines, rightLines, inlineLines, changeIndices } = useMemo(() => {
     const left: DiffLine[] = [];
     const right: DiffLine[] = [];
     const inline: DiffLine[] = [];
+    const changes: number[] = [];
     let leftLineNum = 1;
     let rightLineNum = 1;
     let inlineLineNum = 1;
+    let changeIdx = 0;
 
     diffResult.forEach((part) => {
-      const lines = part.value.split("\n").filter((_, i, arr) => i < arr.length - 1 || part.value[part.value.length - 1] !== "\n" ? true : i < arr.length - 1);
-      
       if (part.value.endsWith("\n")) {
         const lastIndex = part.value.lastIndexOf("\n");
         const beforeLast = part.value.substring(0, lastIndex);
         const splitLines = beforeLast.split("\n");
-        splitLines.forEach((line) => {
+        const isChange = part.removed || part.added;
+        
+        splitLines.forEach((line, i) => {
+          const currentInlineNum = inlineLineNum;
           if (part.removed) {
-            left.push({ lineNumber: leftLineNum++, content: line, type: "removed" });
-            inline.push({ lineNumber: inlineLineNum++, content: line, type: "removed" });
+            if (i === 0) {
+              changes.push(currentInlineNum);
+              changeIdx++;
+            }
+            left.push({ lineNumber: leftLineNum++, content: line, type: "removed", changeIndex: changeIdx });
+            inline.push({ lineNumber: inlineLineNum++, content: line, type: "removed", changeIndex: changeIdx });
           } else if (part.added) {
-            right.push({ lineNumber: rightLineNum++, content: line, type: "added" });
-            inline.push({ lineNumber: inlineLineNum++, content: line, type: "added" });
+            if (i === 0 && (left.length === 0 || left[left.length - 1].type !== "removed")) {
+              changes.push(currentInlineNum);
+              changeIdx++;
+            }
+            right.push({ lineNumber: rightLineNum++, content: line, type: "added", changeIndex: changeIdx });
+            inline.push({ lineNumber: inlineLineNum++, content: line, type: "added", changeIndex: changeIdx });
           } else {
             left.push({ lineNumber: leftLineNum++, content: line, type: "unchanged" });
             right.push({ lineNumber: rightLineNum++, content: line, type: "unchanged" });
@@ -67,12 +81,21 @@ export const DiffViewer = ({
       } else if (part.value) {
         const splitLines = part.value.split("\n");
         splitLines.forEach((line, i) => {
+          const currentInlineNum = inlineLineNum;
           if (part.removed) {
-            left.push({ lineNumber: leftLineNum++, content: line, type: "removed" });
-            inline.push({ lineNumber: inlineLineNum++, content: line, type: "removed" });
+            if (i === 0) {
+              changes.push(currentInlineNum);
+              changeIdx++;
+            }
+            left.push({ lineNumber: leftLineNum++, content: line, type: "removed", changeIndex: changeIdx });
+            inline.push({ lineNumber: inlineLineNum++, content: line, type: "removed", changeIndex: changeIdx });
           } else if (part.added) {
-            right.push({ lineNumber: rightLineNum++, content: line, type: "added" });
-            inline.push({ lineNumber: inlineLineNum++, content: line, type: "added" });
+            if (i === 0 && (left.length === 0 || left[left.length - 1].type !== "removed")) {
+              changes.push(currentInlineNum);
+              changeIdx++;
+            }
+            right.push({ lineNumber: rightLineNum++, content: line, type: "added", changeIndex: changeIdx });
+            inline.push({ lineNumber: inlineLineNum++, content: line, type: "added", changeIndex: changeIdx });
           } else {
             left.push({ lineNumber: leftLineNum++, content: line, type: "unchanged" });
             right.push({ lineNumber: rightLineNum++, content: line, type: "unchanged" });
@@ -82,18 +105,71 @@ export const DiffViewer = ({
       }
     });
 
-    return { leftLines: left, rightLines: right, inlineLines: inline };
+    return { leftLines: left, rightLines: right, inlineLines: inline, changeIndices: changes };
   }, [diffResult]);
 
   const stats = useMemo(() => {
     let added = 0;
     let removed = 0;
-    inlineLines.forEach((line) => {
-      if (line.type === "added") added++;
-      if (line.type === "removed") removed++;
-    });
-    return { added, removed };
-  }, [inlineLines]);
+    let modified = 0;
+    
+    // Group consecutive removed/added as modified
+    let i = 0;
+    while (i < inlineLines.length) {
+      if (inlineLines[i].type === "removed") {
+        let removedCount = 0;
+        while (i < inlineLines.length && inlineLines[i].type === "removed") {
+          removedCount++;
+          i++;
+        }
+        let addedCount = 0;
+        while (i < inlineLines.length && inlineLines[i].type === "added") {
+          addedCount++;
+          i++;
+        }
+        if (addedCount > 0) {
+          modified += Math.min(removedCount, addedCount);
+          removed += Math.max(0, removedCount - addedCount);
+          added += Math.max(0, addedCount - removedCount);
+        } else {
+          removed += removedCount;
+        }
+      } else if (inlineLines[i].type === "added") {
+        added++;
+        i++;
+      } else {
+        i++;
+      }
+    }
+    
+    return { added, removed, modified, totalChanges: changeIndices.length };
+  }, [inlineLines, changeIndices]);
+
+  const scrollToChange = useCallback((index: number) => {
+    if (index >= 0 && index < changeIndices.length) {
+      const lineNum = changeIndices[index];
+      const element = lineRefs.current.get(lineNum);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      setCurrentChangeIndex(index);
+    }
+  }, [changeIndices]);
+
+  const goToPrevChange = useCallback(() => {
+    const newIndex = currentChangeIndex > 0 ? currentChangeIndex - 1 : changeIndices.length - 1;
+    scrollToChange(newIndex);
+  }, [currentChangeIndex, changeIndices.length, scrollToChange]);
+
+  const goToNextChange = useCallback(() => {
+    const newIndex = currentChangeIndex < changeIndices.length - 1 ? currentChangeIndex + 1 : 0;
+    scrollToChange(newIndex);
+  }, [currentChangeIndex, changeIndices.length, scrollToChange]);
+
+  // Reset current change index when content changes
+  useEffect(() => {
+    setCurrentChangeIndex(0);
+  }, [leftContent, rightContent]);
 
   const handleExportPDF = async () => {
     if (!contentRef.current) return;
@@ -129,20 +205,53 @@ export const DiffViewer = ({
         <span className="text-sm font-semibold text-foreground">
           ပြောင်းလဲမှုများ
         </span>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-diff-added-bg">
-            <Plus className="w-3.5 h-3.5 text-diff-added-text" />
-            <span className="text-sm font-semibold text-diff-added-text">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-diff-added-bg" title="ထည့်သွင်းခဲ့သော စာကြောင်းများ">
+            <Plus className="w-3 h-3 text-diff-added-text" />
+            <span className="text-xs font-semibold text-diff-added-text">
               {stats.added}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-diff-removed-bg">
-            <Minus className="w-3.5 h-3.5 text-diff-removed-text" />
-            <span className="text-sm font-semibold text-diff-removed-text">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-diff-removed-bg" title="ဖယ်ရှားခဲ့သော စာကြောင်းများ">
+            <Minus className="w-3 h-3 text-diff-removed-text" />
+            <span className="text-xs font-semibold text-diff-removed-text">
               {stats.removed}
             </span>
           </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30" title="ပြင်ဆင်ခဲ့သော စာကြောင်းများ">
+            <Pencil className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+              {stats.modified}
+            </span>
+          </div>
         </div>
+
+        {/* Change Navigation */}
+        {stats.totalChanges > 0 && (
+          <div className="flex items-center gap-1 border border-border rounded-lg p-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goToPrevChange}
+              className="h-7 w-7 p-0"
+              title="ယခင် ပြောင်းလဲမှု"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </Button>
+            <span className="text-xs font-medium text-muted-foreground px-2 min-w-[60px] text-center">
+              {currentChangeIndex + 1} / {stats.totalChanges}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goToNextChange}
+              className="h-7 w-7 p-0"
+              title="နောက် ပြောင်းလဲမှု"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
 
         {/* View Mode Toggle */}
         <div className="flex items-center gap-1 p-1 bg-muted rounded-lg ml-auto">
@@ -210,31 +319,40 @@ export const DiffViewer = ({
               </span>
             </div>
             <div className="overflow-auto flex-1">
-              {inlineLines.map((line, index) => (
-                <div
-                  key={index}
-                  className={cn(
-                    "flex border-b border-border/30 hover:bg-muted/30 transition-colors",
-                    line.type === "removed" && "bg-diff-removed-bg/50",
-                    line.type === "added" && "bg-diff-added-bg/50"
-                  )}
-                >
-                  <span className="w-14 flex-shrink-0 px-3 py-1 text-right text-xs font-mono text-muted-foreground bg-muted/30 border-r border-border/50 select-none">
-                    {line.lineNumber}
-                  </span>
-                  <span
+              {inlineLines.map((line, index) => {
+                const isFirstOfChange = changeIndices.includes(line.lineNumber);
+                return (
+                  <div
+                    key={index}
+                    ref={(el) => {
+                      if (el && isFirstOfChange) {
+                        lineRefs.current.set(line.lineNumber, el);
+                      }
+                    }}
                     className={cn(
-                      "flex-1 px-4 py-1 font-mono text-sm whitespace-pre-wrap",
-                      line.type === "removed" && "text-diff-removed-text line-through decoration-diff-removed-text/50",
-                      line.type === "added" && "text-diff-added-text font-medium"
+                      "flex border-b border-border/30 hover:bg-muted/30 transition-colors",
+                      line.type === "removed" && "bg-diff-removed-bg/50",
+                      line.type === "added" && "bg-diff-added-bg/50",
+                      isFirstOfChange && line.changeIndex === currentChangeIndex + 1 && "ring-2 ring-primary ring-inset"
                     )}
                   >
-                    {line.type === "removed" && <Minus className="inline w-3 h-3 mr-2 opacity-70" />}
-                    {line.type === "added" && <Plus className="inline w-3 h-3 mr-2 opacity-70" />}
-                    {line.content || " "}
-                  </span>
-                </div>
-              ))}
+                    <span className="w-14 flex-shrink-0 px-3 py-1 text-right text-xs font-mono text-muted-foreground bg-muted/30 border-r border-border/50 select-none">
+                      {line.lineNumber}
+                    </span>
+                    <span
+                      className={cn(
+                        "flex-1 px-4 py-1 font-mono text-sm whitespace-pre-wrap",
+                        line.type === "removed" && "text-diff-removed-text line-through decoration-diff-removed-text/50",
+                        line.type === "added" && "text-diff-added-text font-medium"
+                      )}
+                    >
+                      {line.type === "removed" && <Minus className="inline w-3 h-3 mr-2 opacity-70" />}
+                      {line.type === "added" && <Plus className="inline w-3 h-3 mr-2 opacity-70" />}
+                      {line.content || " "}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : (
