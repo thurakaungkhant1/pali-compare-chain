@@ -47,6 +47,14 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        diff: {
+          "added-bg": "hsl(var(--diff-added-bg))",
+          "added-text": "hsl(var(--diff-added-text))",
+          "removed-bg": "hsl(var(--diff-removed-bg))",
+          "removed-text": "hsl(var(--diff-removed-text))",
+          "changed-bg": "hsl(var(--diff-changed-bg))",
+          "changed-text": "hsl(var(--diff-changed-text))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
