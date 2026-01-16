@@ -195,7 +195,10 @@ const Index = () => {
       <footer className="border-t border-border/50 py-6 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 text-center">
           <p className="text-sm text-muted-foreground">
-            ပါဠိ-မြန်မာ စာဖိုင် နှိုင်းယှဉ်ခြင်းစနစ် • စာစစ်များအတွက်
+            © 2026 Copyright by Nissaya Pali Text Compare
+          </p>
+          <p className="text-xs text-muted-foreground/70 mt-1">
+            Created by thurakaungkhant
           </p>
         </div>
       </footer>
