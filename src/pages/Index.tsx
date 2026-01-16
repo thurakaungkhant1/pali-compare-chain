@@ -37,6 +37,14 @@ const Index = () => {
     []
   );
 
+  const handleFileClear = useCallback((index: number) => {
+    setVersions((prev) => {
+      const updated = [...prev];
+      updated[index] = { content: "", fileName: "" };
+      return updated;
+    });
+  }, []);
+
   const handleReset = () => {
     setVersions([
       { content: "", fileName: "" },
@@ -135,6 +143,7 @@ const Index = () => {
                     label={`စာစစ် ${index + 1}`}
                     index={index}
                     onFileLoad={handleFileLoad}
+                    onClear={handleFileClear}
                     fileName={version.fileName}
                   />
                 </div>
