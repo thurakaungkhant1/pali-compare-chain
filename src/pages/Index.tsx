@@ -1,8 +1,15 @@
 import { useState, useCallback } from "react";
 import { FileUploader } from "@/components/FileUploader";
 import { DiffViewer } from "@/components/DiffViewer";
-import { VersionTabs } from "@/components/VersionTabs";
-import { FileText, RotateCcw, Sparkles, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ComparisonSelector } from "@/components/ComparisonSelector";
+import {
+  FileText,
+  RotateCcw,
+  Sparkles,
+  CheckCircle2,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface FileVersion {
@@ -42,6 +49,23 @@ const Index = () => {
     setActiveComparison([0, 1]);
   };
 
+  const handleAddSlot = () => {
+    setVersions((prev) => [...prev, { content: "", fileName: "" }]);
+  };
+
+  const handleRemoveSlot = (index: number) => {
+    if (versions.length <= 2) return;
+    setVersions((prev) => prev.filter((_, i) => i !== index));
+    // Adjust active comparison if needed
+    setActiveComparison((prev) => {
+      let [left, right] = prev;
+      if (left >= index) left = Math.max(0, left - 1);
+      if (right >= index) right = Math.max(0, right - 1);
+      if (left === right) right = left === 0 ? 1 : 0;
+      return [left, Math.min(right, versions.length - 2)];
+    });
+  };
+
   const filesLoaded = versions.filter((v) => v.content).length;
   const hasComparableFiles = filesLoaded >= 2;
 
@@ -52,10 +76,12 @@ const Index = () => {
     ) {
       return activeComparison;
     }
-    for (let i = 0; i < versions.length - 1; i++) {
-      if (versions[i].content && versions[i + 1].content) {
-        return [i, i + 1];
-      }
+    // Find first two files with content
+    const withContent = versions
+      .map((v, i) => ({ index: i, hasContent: !!v.content }))
+      .filter((v) => v.hasContent);
+    if (withContent.length >= 2) {
+      return [withContent[0].index, withContent[1].index];
     }
     return [0, 1];
   };
@@ -106,68 +132,59 @@ const Index = () => {
                   ဖိုင်များတင်ရန်
                 </h2>
                 <span className="text-xs px-2.5 py-1 rounded-full bg-secondary text-muted-foreground font-medium">
-                  {filesLoaded}/4 ဖိုင်
+                  {filesLoaded}/{versions.length} ဖိုင်
                 </span>
               </div>
-              {hasComparableFiles && (
-                <div className="flex items-center gap-2 text-sm text-primary font-medium animate-scale-in">
-                  <CheckCircle2 className="w-4 h-4" />
-                  နှိုင်းယှဉ်ရန် အဆင်သင့်
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {hasComparableFiles && (
+                  <div className="flex items-center gap-2 text-sm text-primary font-medium animate-scale-in mr-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    နှိုင်းယှဉ်ရန် အဆင်သင့်
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddSlot}
+                  className="gap-1.5 rounded-xl"
+                >
+                  <Plus className="w-4 h-4" />
+                  စာစစ်ထပ်ထည့်
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[0, 1, 2, 3].map((index) => (
+              {versions.map((version, index) => (
                 <div
                   key={index}
-                  className="animate-fade-in-up"
-                  style={{ animationDelay: `${index * 0.1}s` }}
+                  className="relative animate-fade-in-up"
+                  style={{ animationDelay: `${Math.min(index, 4) * 0.1}s` }}
                 >
                   <FileUploader
                     label={`စာစစ် ${index + 1}`}
                     index={index}
                     onFileLoad={handleFileLoad}
-                    fileName={versions[index].fileName}
+                    fileName={version.fileName}
                   />
+                  {versions.length > 2 && (
+                    <button
+                      onClick={() => handleRemoveSlot(index)}
+                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center hover:scale-110 transition-transform shadow-md"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
-
-            {/* Flow Indicator */}
-            {filesLoaded > 0 && (
-              <div className="flex items-center justify-center gap-1 mt-8 animate-fade-in">
-                {versions.map((v, i) => (
-                  <div key={i} className="flex items-center gap-1">
-                    <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold transition-all duration-500 ${
-                        v.content
-                          ? "gradient-warm text-primary-foreground shadow-glow scale-110"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {i + 1}
-                    </div>
-                    {i < 3 && (
-                      <ArrowRight
-                        className={`w-5 h-5 mx-1 transition-colors duration-300 ${
-                          v.content && versions[i + 1]?.content
-                            ? "text-primary"
-                            : "text-muted-foreground/30"
-                        }`}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </section>
 
         {/* Comparison Section */}
         {hasComparableFiles && (
           <section className="flex-1 flex flex-col gap-4 animate-fade-in-up">
-            <VersionTabs
+            <ComparisonSelector
               versions={versions}
               activeComparison={validComparison}
               onComparisonChange={setActiveComparison}
